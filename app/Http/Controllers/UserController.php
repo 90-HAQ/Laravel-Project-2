@@ -12,11 +12,11 @@ class UserController extends Controller
     {
         $coll = new DatabaseConnection();
         $table = 'users';
-        $coll2 = $coll->db_connection($table);
+        $coll2 = $coll->db_connection();
 
-        $insert = $coll2->insertOne(
+        $insert = $coll2->$table->insertOne(
         [
-            'name' => 'Umar',
+            'name' => 'Waqas',
         ]);
         dd($insert);
     }    

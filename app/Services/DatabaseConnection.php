@@ -5,9 +5,9 @@ use MongoDB\Client as mongo;
 
 class DatabaseConnection
 {
-    function db_connection($table)
+    function db_connection()
     {
-        $collect = (new mongo)->test->$table;
+        $collect = (new mongo)->test;
         return $collect;
     }
 }
