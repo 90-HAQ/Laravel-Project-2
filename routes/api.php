@@ -87,4 +87,4 @@ Route::group(['middleware' => "tokenAuth"], function()
     Route::post('/user_delete_comment', [UserCommentsController::class, 'user_comment_delete']);
 });
 
-Route::get('check', [UserController::class, 'insert_data']);
+//Route::get('check', [UserController::class, 'insert_data']);

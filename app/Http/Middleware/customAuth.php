@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\DataBaseConnection;
 
 class customAuth
 {
@@ -21,11 +22,17 @@ class customAuth
 
         if(!empty($token))
         {
-            $data = DB::table('users')->where('remember_token', $token)->get();
+            $coll = new DatabaseConnection();
+            $table = 'users';
+            $coll2 = $coll->db_connection();
+    
+            $insert = $coll2->$table->findOne(
+            [
+                'remember_token' => $token,
+                // 'password' => $password,
+            ]);
 
-            $wordcount = count($data);
-
-            if($wordcount > 0)
+            if($insert)
             {
                 return $next($req);
             }

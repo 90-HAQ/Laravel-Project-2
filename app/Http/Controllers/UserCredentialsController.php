@@ -16,6 +16,7 @@ use App\Http\Requests\LoginValidation;
 use App\Http\Requests\UserUpdateDetailsValidation;
 use App\Http\Requests\UserForgetValidation;
 use App\Http\Requests\UserChangePasswordValidation;
+use App\Services\DataBaseConnection;
 
 
 
@@ -40,25 +41,36 @@ class UserCredentialsController extends Controller
     {
 
         $req->validated();
-        $user = new User;
     
-        $user->name = $req->input('name');
-        $user->email = $req->input('email');
-        $user->password = Hash::make($req->input('password')); // return hashed password
-        $user->gender = $req->input('gender');
-        $user->status = 0;
-        $user->verify_token = rand(10, 5000);
+        $name = $req->input('name');
+        $email = $req->input('email');
+        $password = Hash::make($req->input('password')); // return hashed password
+        $gender = $req->input('gender');
+        $status = 0;
+        $verify_token = rand(10, 5000);
 
 
         // parameters for mail sending function.
-        $sendto = $user->email;
-        $verify_token = $user->verify_token;
-
-        // save data in db
-        $result = $user->save();
+        $sendto = $email;
+        $verify_token = $verify_token;
 
 
-        if($result)
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
+
+        $insert = $coll2->$table->insertOne(
+        [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'gender' => $gender,
+            'status' => $status,
+            'verif_token' => $verify_token,
+
+        ]);
+
+        if($insert)
         {
             $result = $this->sendmail($sendto, $verify_token);
             return response($result,200);
@@ -74,14 +86,22 @@ class UserCredentialsController extends Controller
     // welcome api for user email verification and updation at backend
     public function welcome_to_login($email, $verify_token)
     {
-        $data = DB::table('users')->where('email', $email)->where('verify_token', $verify_token)->get();
-        
-        $wordCount = count($data);
 
-        if($wordCount > 0)
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
+
+        $insert = $coll2->$table->find(
+        [
+            'email' => $email,
+            'verif_token' => $verify_token,
+        ]);
+
+        if($insert)
         {
-            DB::table('users')->where('email', $email)->update(['email_verified_at'=> now()]);
-            DB::table('users')->where('email', $email)->update(['updated_at'=> now()]);
+            $update = $coll2->$table->updateMany(array("email"=>$email),
+            array('$set'=>array('email_verified_at' => now(), 'updated_at' => now())));
+            
             return response(['Message'=>'Your Email has been Verified']);
         }
         else
@@ -99,22 +119,25 @@ class UserCredentialsController extends Controller
         $email_verified = 0;
 
         $req->validated();
-        $user = new User;
-        $user->email = $req->input('email');
-        $user->password = $req->input('password');
-        
-        $data = DB::table('users')->where('email', $user->email)->get();
+        $email = $req->input('email');
+        $password = $req->input('password');
 
-        foreach($data as $key )
-        {
-            //to get each columns value
-            //$value->name
-            $pas = $key->password; 
-            $status = $key->status;  
-            $email_verified = $key->email_verified_at; 
-        }
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
 
-        if(!empty($email_verified) && Hash::check($user->password, $pas))
+        $insert = $coll2->$table->findOne(
+        [
+            'email' => $email,
+            // 'password' => $password,
+        ]);
+
+        $pas = $insert['password'];
+        $status = $insert['status'];  
+        $email_verified = $insert['email_verified_at']; 
+
+
+        if(!empty($email_verified) && Hash::check($password, $pas))
         {
             if($status == 0)
             {
@@ -131,9 +154,8 @@ class UserCredentialsController extends Controller
                 // check if jwt is generating or not.
                 //echo $jwt;
 
-                DB::table('users')->where('email', $user->email)->update(['remember_token' => $jwt]);
-
-                DB::table('users')->where('email', $user->email)->update(['status'=> '1']);
+                $coll2->$table->updateMany(array("email"=>$email),
+                array('$set'=>array('remember_token' => $jwt, 'status' => '1')));
 
                 return response(['Message' => 'Now you are logged In', 'access_token' => $jwt]);
             }
@@ -144,7 +166,7 @@ class UserCredentialsController extends Controller
         }
         else
         {
-            return response(['Message' => 'Your email '.$user->email.' does not exists in our record '.'because your email is not verified. Please verify your email first.']);
+            return response(['Message' => 'Your email '.$email.' does not exists in our record '.'because your email is not verified. Please verify your email first.']);
             //return response(['Message' => 'Your email '.$user->email.' is not verified. Please verify your email first.']);
         }
     }
@@ -270,13 +292,25 @@ class UserCredentialsController extends Controller
     public function user_logout(Request $req)
     {
         $token = $req->token;
-        $data = DB::table('users')->where(['remember_token' => $token])->get();
-        $check = count($data);
 
-        if($check > 0)
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
+
+        $insert = $coll2->$table->findOne(
+        [
+            'remember_token' => $token,
+            // 'password' => $password,
+        ]);
+
+        if($insert)
         {
-            DB::table('users')->where(['remember_token' => $token])->update(['status'=> '0']);
-            DB::table('users')->where(['remember_token' => $token])->update(['remember_token' => null]);
+
+            $coll2->$table->updateMany(array("remember_token"=>$token),
+            array('$set'=>array('remember_token' => null, 'status' => '0')));
+
+            // DB::table('users')->where(['remember_token' => $token])->update(['status'=> '0']);
+            // DB::table('users')->where(['remember_token' => $token])->update(['remember_token' => null]);
             return response(['Message' => 'Logout Succeccfully..!!']);
         }
         else
