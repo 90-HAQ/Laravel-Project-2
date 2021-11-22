@@ -25,6 +25,7 @@ class UserAddFriendValidation extends FormRequest
     {
         return [
             'email'     =>  'required|email',
+            'status'     =>  'required',
         ];
     }
 }

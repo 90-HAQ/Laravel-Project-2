@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Http\Requests\UserCommentValidation;
 use App\Http\Requests\UserCommentUpdateValidation;
 use App\Http\Requests\UserCommentDeleteValidation;
+use App\Services\DataBaseConnection;
 
 class UserCommentsController extends Controller
 {
@@ -17,11 +18,10 @@ class UserCommentsController extends Controller
     function user_comments(UserCommentValidation $req)
     {
         $req->validated();
-        $user = new Comment;
 
-        $token = $user->name = $req->input('token');
-        $pid = $user->pid = $req->input('pid');
-        $comment = $user->comment = $req->input('comment');
+        $token = $req->input('token');
+        $pid = $req->input('pid');
+        $comment = $req->input('comment');
         
         if($req->file != null)
         {
@@ -31,20 +31,49 @@ class UserCommentsController extends Controller
         {
             $file = null;
         }
-        
-        $data = DB::table('users')->where('remember_token', $token)->get();
-        $wordcount = count($data);
 
-        if($wordcount > 0)
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
+
+
+        $insert = $coll2->$table->findOne(
+        [
+            'remember_token' => $token,
+        ]);
+
+        if(!empty($insert))
         {
             // get user id from 
-            $uid = $data[0]->uid;
+            $uid = $insert['_id']; 
 
-            // add data into friends table    
-            $values = array('user_id' => $uid, 'post_id' => $pid, 'comments' => $comment, 'file' => $file);
-            DB::table('comments')->insert($values);
+            $coll = new DatabaseConnection();
+            $table = 'posts';
+            $coll2 = $coll->db_connection();
 
-            return response(['Message' => 'Comment Uploaded on Post...!!!']);
+            // this error will be always shown so ignore it.
+            $ppid = new \MongoDB\BSON\ObjectId($pid);
+
+            // it will generate a random id as comment id
+            $comment_id = new \MongoDB\BSON\ObjectId();
+
+            $comments = array(
+                'comment_id'    =>       $comment_id,
+                'user_id2'      =>       $uid,
+                'comment'       =>      $comment,
+                'file'          =>      $file
+            );
+
+            $update = $coll2->$table->updateOne(["_id"=>$ppid],['$push'=>["comments" => $comments]]);
+
+            if(!empty($update))
+            {
+                return response(['Message' => 'Comment Uploaded on Post...!!!']);
+            }
+            else
+            {
+                return response(['Message' => 'No Comment Uploaded on Post...!!!']);
+            }   
         }
         else
         {
@@ -58,11 +87,11 @@ class UserCommentsController extends Controller
     {
 
         $req->validated();
-        $user = new Comment;
+        
 
-        $token = $user->name = $req->input('token');
-        $cid = $user->pid = $req->input('cid');
-        $comment = $user->comment = $req->input('comment');
+        $token =  $req->input('token');
+        $comment_id = $req->input('cid');
+        $comment = $req->input('comment');
 
         if($req->file != null)
         {
@@ -73,17 +102,38 @@ class UserCommentsController extends Controller
             $file = null;
         }
         
+        $coll = new DatabaseConnection();
+        $table = 'users';
+        $coll2 = $coll->db_connection();
+
+
+        $insert = $coll2->$table->findOne(
+        [
+            'remember_token' => $token,
+        ]);
+
+
+        $coll = new DatabaseConnection();
+        $table = 'posts';
+        $coll2 = $coll->db_connection();
+
+        $insert1 = $coll2->$table->findOne(
+        [
+            'comments' => $comment_id,
+        ]);
+
+        dd($insert1);
         
-        $data = DB::table('users')->where('remember_token', $token)->get();
+        // $data = DB::table('users')->where('remember_token', $token)->get();
 
-        $wordcount = count($data);
+        // $wordcount = count($data);
 
-        if($wordcount > 0)
+        if(!empty($insert))
         {
             // get user id from 
-            $uid = $data[0]->uid;
+            $uid = $insert['_id']; 
 
-            DB::table('comments')->where(['cid' => $cid, 'user_id' => $uid])->update(['comments' => $comment, 'file' => $file]);
+            //DB::table('comments')->where(['cid' => $cid, 'user_id' => $uid])->update(['comments' => $comment, 'file' => $file]);
 
             return response(['Message' => 'Your Comment has been updated.']);
         }
