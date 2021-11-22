@@ -61,6 +61,10 @@ Route::group(['middleware' => "tokenAuth"], function()
     Route::post('/add_friend', [UserMakeFriendsController::class, 'user_add_friends']);
 
 
+    // user remove friends
+    Route::post('/remove_friend', [UserMakeFriendsController::class, 'user_remove_friends']);
+
+
     // user add post
     Route::post('/add_post', [UserPostsController::class, 'create_post']);
 
