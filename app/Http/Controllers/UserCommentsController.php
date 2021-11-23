@@ -94,8 +94,6 @@ class UserCommentsController extends Controller
         
         $comment = $req->input('comment');
 
-        
-        
         if($req->file != null)
         {
             $file = $req->file('file')->store('comments');
@@ -103,8 +101,7 @@ class UserCommentsController extends Controller
         else
         {
             $file = null;
-        }
-        
+        }        
         
         $coll = new DatabaseConnection();
         $table = 'posts';
@@ -114,12 +111,9 @@ class UserCommentsController extends Controller
 
         $ccid = new \MongoDB\BSON\ObjectId($comment_id);
 
-
-        //$update = $coll2->$table->updateOne(['_id' => $pid,'comments.comment_id' => $comment_id], ['$set'=>['comments.$.comment'=>$comment,'comments.$.file'=>$file]]);
         // db.posts.updateOne({_id:ObjectId("619b7373107a0000cd005bec"),'comments.comment_id':ObjectId("619c7edb202f00009f005265")},{$set:{'comments.$.comment':"brilliant",'comments.$.file':"123.jpg"}});
         $update = $coll2->$table->updateOne(["_id" => $ppid,"comments.comment_id" => $ccid],['$set' => ["comments.$.comment" => $comment, "comments.$.file" => $file]]);
         
-
         if(!empty($update))
         {
             return response(['Message' => 'Your Comment has been updated.']);
@@ -135,8 +129,6 @@ class UserCommentsController extends Controller
     function user_comment_delete(UserCommentDeleteValidation $req)
     {
         $req->validated();
-
-        $token = $req->input('token');
         $pid = $req->input('pid');
         $cid = $req->input('cid');
 
@@ -153,13 +145,13 @@ class UserCommentsController extends Controller
         //db.posts.update({_id:ObjectId("619b7373107a0000cd005bec"), 'comments.comment_id':ObjectId("619b73a6107a0000cd005bef")}, {$pull:{comments:{comment_id:ObjectId("619b73a6107a0000cd005bef")}}})
         $delete = $coll2->$table->updateOne(["_id" => $ppid, "comments.comment_id" => $ccid], ['$pull' => ["comments" => ["comment_id" => $ccid]]]);
 
-        if($delete)
+        if(!empty($delete))
         {
             return response(['Message' => 'Your Comment has been deleted.']);
         }
         else
         {
-            return response(['Message' => 'Something went wrong in while deleted comment..!!!']);
+            return response(['Message' => 'Comment does not exists / Something went wrong in while deleted comment..!!!']);
         }     
     }
 }

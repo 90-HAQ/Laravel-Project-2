@@ -24,7 +24,7 @@ class UserRemoveFriendValidation extends FormRequest
     public function rules()
     {
         return [
-            'email'     =>  'required|email',
+            'user_id2'     =>  'required',
         ];
     }
 }

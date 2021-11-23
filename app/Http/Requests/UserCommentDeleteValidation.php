@@ -24,6 +24,7 @@ class UserCommentDeleteValidation extends FormRequest
     public function rules()
     {
         return [
+            'pid'  =>  'required',
             'cid'  =>  'required',
         ];
     }

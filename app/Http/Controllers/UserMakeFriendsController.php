@@ -20,7 +20,7 @@ class UserMakeFriendsController extends Controller
         
         $token = $req->input('token');
         $email = $req->input('email');
-        $friend = $req->input('status');
+        $status = $req->input('status');
 
         $coll = new DatabaseConnection();
         $table = 'users';
@@ -57,26 +57,37 @@ class UserMakeFriendsController extends Controller
             {                    
                 // user cannot add himself as friend.
                 if($uid1 != $uid22)
-                {
+                {                    
                     $coll = new DatabaseConnection();
-                    $table = 'friends';
+                    $table = 'users';
                     $coll2 = $coll->db_connection();
 
                     $insert3 = $coll2->$table->findOne(
                     [
-                        'user_id1' => $uid1,
-                        'user_id2' => $uid22,
-                    ]);
+                        "friends.user_id2" => $uid22
+                    ]);                    
 
                     if(empty($insert3))
                     {
-                        $insert4 = $coll2->$table->insertOne(
-                        [
-                            'user_id1' => $uid1,
-                            'user_id2' => $uid22,
-                            'status' => $friend,
-                        ]);
-                        if(!empty($insert4))
+                        $coll = new DatabaseConnection();
+                        $table = 'users';
+                        $coll2 = $coll->db_connection();
+            
+                        // this error will be always shown so ignore it.
+                        $uuid = new \MongoDB\BSON\ObjectId($uid1);
+            
+                        // it will generate a random id as comment id
+                        $friend_id = new \MongoDB\BSON\ObjectId();
+            
+                        $friends = array(
+                            'friend_id'    =>      $friend_id,
+                            'user_id2'      =>      $uid22,
+                            'status'        =>      $status,
+                        );
+            
+                        $update = $coll2->$table->updateOne(["_id"=>$uuid],['$push'=>["friends" => $friends]]);
+
+                        if(!empty($update))
                         {
                             return response(['Message' => 'Congrats '.$name2.' is your friend now...!!!!']);
                         }
@@ -115,32 +126,28 @@ class UserMakeFriendsController extends Controller
         $req->validated();
         
         $token = $req->input('token');
-        $email = $req->input('email');
+        $user_id2 = $req->input('user_id2');
 
         $coll = new DatabaseConnection();
         $table = 'users';
         $coll2 = $coll->db_connection();
 
-
         $insert1 = $coll2->$table->findOne(
         [
             'remember_token' => $token,
         ]);
+        
 
+        $user_id22 = new \MongoDB\BSON\ObjectId($user_id2);
         $insert2 = $coll2->$table->findOne(
         [
-            'email' => $email,
+            '_id' => $user_id22,
         ]);
 
         // get id of user-1
         $uid1 = $insert1['_id']; 
 
-        // get id of user-2
-        $uid22 = $insert2['_id']; 
-        // get name of user-2
         $name2 = $insert2['name'];
-
-
 
         // to check if friend user is email-verified or not
         if(!empty($insert1) && !empty($insert2))
@@ -148,38 +155,26 @@ class UserMakeFriendsController extends Controller
             // this if is for to check num of rows from user1 variable  
             // this if is for to check num of rows from user2 variable  
                 // user cannot un-friend himself as friend.
-            if($uid1 != $uid22)
+            if($uid1 != $user_id2)
             {
                 $coll = new DatabaseConnection();
-                $table = 'friends';
+                $table = 'users';
                 $coll2 = $coll->db_connection();
+    
+                // this error will be always shown so ignore it.
+                $uuid = new \MongoDB\BSON\ObjectId($uid1);
+    
+    
+                $delete = $coll2->$table->updateOne(["_id" => $uuid, "friends.user_id2" => $user_id22], ['$pull' => ["friends" => ["user_id2" => $user_id22]]]);
 
-                $insert3 = $coll2->$table->findOne(
-                [
-                    'user_id1' => $uid1,
-                    'user_id2' => $uid22,
-                ]);
-
-                if(!empty($insert3))
+                if(!empty($delete))
                 {
-                    // $update = $coll2->$table->updateOne(array("user_id1" => $uid1, "user_id2" => $uid22),
-                    // array('$set'=>array('status' => $status)));
-
-                    $delete = $coll2->$table->deleteOne(array("user_id1"=> $uid1, "user_id2"=>$uid22));
-
-                    if(!empty($delete))
-                    {
-                        return response(['Message' => 'You have successfully unfriend '.$name2.' from your friend list...!!!!']);
-                    }
-                    else
-                    {
-                        return response(['Message' => 'Something went wrong while removing friend...!!!!']);
-                    }                                
+                    return response(['Message' => 'Congrats '.$name2.' is removed now from your friend list...!!!!']);
                 }
                 else
                 {
-                    return response(['Message' => 'Not your Friend.']);
-                }
+                    return response(['Message' => 'Not your Friend / Something went wrong while removing friend...!!!!']);
+                } 
             }
             else
             {
