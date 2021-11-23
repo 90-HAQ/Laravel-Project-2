@@ -32,6 +32,7 @@ class UserCommentsController extends Controller
             $file = null;
         }
 
+
         $coll = new DatabaseConnection();
         $table = 'users';
         $coll2 = $coll->db_connection();
@@ -58,10 +59,10 @@ class UserCommentsController extends Controller
             $comment_id = new \MongoDB\BSON\ObjectId();
 
             $comments = array(
-                'comment_id'    =>       $comment_id,
-                'user_id2'      =>       $uid,
+                'comment_id'    =>      $comment_id,
+                'user_id2'      =>      $uid,
                 'comment'       =>      $comment,
-                'file'          =>      $file
+                'file'          =>      $file,
             );
 
             $update = $coll2->$table->updateOne(["_id"=>$ppid],['$push'=>["comments" => $comments]]);
@@ -85,14 +86,16 @@ class UserCommentsController extends Controller
     // user updates comment
     function user_comments_update(UserCommentUpdateValidation $req)
     {
-
         $req->validated();
         
-
-        $token =  $req->input('token');
+        $pid = $req->input('pid');
+        
         $comment_id = $req->input('cid');
+        
         $comment = $req->input('comment');
 
+        
+        
         if($req->file != null)
         {
             $file = $req->file('file')->store('comments');
@@ -102,39 +105,23 @@ class UserCommentsController extends Controller
             $file = null;
         }
         
-        $coll = new DatabaseConnection();
-        $table = 'users';
-        $coll2 = $coll->db_connection();
-
-
-        $insert = $coll2->$table->findOne(
-        [
-            'remember_token' => $token,
-        ]);
-
-
+        
         $coll = new DatabaseConnection();
         $table = 'posts';
         $coll2 = $coll->db_connection();
 
-        $insert1 = $coll2->$table->findOne(
-        [
-            'comments' => $comment_id,
-        ]);
+        $ppid = new \MongoDB\BSON\ObjectId($pid);
 
-        dd($insert1);
+        $ccid = new \MongoDB\BSON\ObjectId($comment_id);
+
+
+        //$update = $coll2->$table->updateOne(['_id' => $pid,'comments.comment_id' => $comment_id], ['$set'=>['comments.$.comment'=>$comment,'comments.$.file'=>$file]]);
+        // db.posts.updateOne({_id:ObjectId("619b7373107a0000cd005bec"),'comments.comment_id':ObjectId("619c7edb202f00009f005265")},{$set:{'comments.$.comment':"brilliant",'comments.$.file':"123.jpg"}});
+        $update = $coll2->$table->updateOne(["_id" => $ppid,"comments.comment_id" => $ccid],['$set' => ["comments.$.comment" => $comment, "comments.$.file" => $file]]);
         
-        // $data = DB::table('users')->where('remember_token', $token)->get();
 
-        // $wordcount = count($data);
-
-        if(!empty($insert))
+        if(!empty($update))
         {
-            // get user id from 
-            $uid = $insert['_id']; 
-
-            //DB::table('comments')->where(['cid' => $cid, 'user_id' => $uid])->update(['comments' => $comment, 'file' => $file]);
-
             return response(['Message' => 'Your Comment has been updated.']);
         }
         else
@@ -148,22 +135,26 @@ class UserCommentsController extends Controller
     function user_comment_delete(UserCommentDeleteValidation $req)
     {
         $req->validated();
-        $user = new Comment;
 
-        $token = $user->name = $req->input('token');
-        $cid = $user->pid = $req->input('cid');
+        $token = $req->input('token');
+        $pid = $req->input('pid');
+        $cid = $req->input('cid');
+
+        $coll = new DatabaseConnection();
+        $table = 'posts';
+        $coll2 = $coll->db_connection();
+
+        $ppid = new \MongoDB\BSON\ObjectId($pid);
+
+        $ccid = new \MongoDB\BSON\ObjectId($cid);
         
-        $data = DB::table('users')->where('remember_token', $token)->get();
+        //$delete = $coll2->$table->updateOne(["_id" => $ppid,"comments.comment_id" => $ccid],['$pull' => ["comments.$.comment_id" => $ccid]]);
 
-        $wordcount = count($data);
+        //db.posts.update({_id:ObjectId("619b7373107a0000cd005bec"), 'comments.comment_id':ObjectId("619b73a6107a0000cd005bef")}, {$pull:{comments:{comment_id:ObjectId("619b73a6107a0000cd005bef")}}})
+        $delete = $coll2->$table->updateOne(["_id" => $ppid, "comments.comment_id" => $ccid], ['$pull' => ["comments" => ["comment_id" => $ccid]]]);
 
-        if($wordcount > 0)
+        if($delete)
         {
-            // get user id from 
-            $uid = $data[0]->uid;
-
-            DB::table('comments')->where(['cid' => $cid, 'user_id' => $uid])->delete();
-
             return response(['Message' => 'Your Comment has been deleted.']);
         }
         else
