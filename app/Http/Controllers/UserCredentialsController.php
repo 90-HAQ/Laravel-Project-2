@@ -348,7 +348,7 @@ class UserCredentialsController extends Controller
             $coll2->$table->updateMany(array("remember_token"=>$token),
             array('$set'=>array('remember_token' => null, 'status' => '0')));
 
-            return response(['Message' => 'Logout Succeccfully..!!']);
+            return response(['Message' => 'Logout Successfully..!!']);
         }
         else
         {
